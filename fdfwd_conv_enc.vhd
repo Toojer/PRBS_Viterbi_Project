@@ -5,7 +5,8 @@ use IEEE.NUMERIC_STD.ALL;
 ----------------------------------------------------------------------------------
 entity fdfwd_conv_enc is
   generic (
-    m : integer := 2);                  -- generator polynomial size
+    m       : integer := 2;
+    word_sz : integer := 32);                  -- generator polynomial size
   port (
     clk        : in std_logic;         -- clock signal
     gen_poly1  : in  std_logic_vector(0 to m-1); -- generator polynomials for encoder
@@ -27,7 +28,7 @@ begin
     variable temp_val1, temp_val2 : std_logic_vector(0 to 31) := (others => '0');
     variable temp_bit1,temp_bit2 : std_logic := '0';
     variable temp_gen_poly1,temp_gen_poly2 : std_logic_vector(0 to 31) := (others =>'0');
-    variable count : integer := 0;
+    variable wrd_cnt,count : integer := 0;
   begin
    -- make sure gen_poly is 32 bits in length--
    if gen_poly1'Length /= 32 then
@@ -35,19 +36,20 @@ begin
      temp_gen_poly2(gen_poly2'range) := gen_poly2;
    end if;
    --------------------------------------------
-   if rising_edge(clk) then  
-     if gen_data = '1' then 
+   if rising_edge(clk) then 
+     --valid_data <= '0'; 
+     if gen_data = '1' and wrd_cnt <= word_sz-(m-1) then 
        mem_regs  := bit_in & mem_regs(0 to 30); --shift right and put in input bit
-       count     := 0;
-       if gen_data_r = '0' then
+       if wrd_cnt = 0 then
          word_start <= '1';
        else
          word_start <= '0';
        end if;
-       ready <= '0';
+       ready <= '1';
        valid_data <= '1';
+       wrd_cnt := wrd_cnt+1;
        
-     elsif (count <= m-1 and gen_data = '0') then --terminate word
+     elsif (count <= m-1 and wrd_cnt >= word_sz-(m-2)) then --terminate word
        mem_regs := '0' & mem_regs(0 to 30); --fill with zeros
        word_start <= '0';
        ready <= '0';
@@ -57,8 +59,10 @@ begin
      else
        mem_regs := (others => '0');
        word_start <= '0';
-       ready <= '1';
+       ready      <= '1';
        valid_data <= '0';
+       count      := 0;
+       wrd_cnt    := 0;
      end if;
     -------- perform convolutional encoding ---------
      temp_val1 := mem_regs and temp_gen_poly1;
