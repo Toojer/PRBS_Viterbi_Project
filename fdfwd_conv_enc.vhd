@@ -38,31 +38,37 @@ begin
    --------------------------------------------
    if rising_edge(clk) then 
      --valid_data <= '0'; 
-     if gen_data = '1' and wrd_cnt <= word_sz-(m-1) then 
-       mem_regs  := bit_in & mem_regs(0 to 30); --shift right and put in input bit
-       if wrd_cnt = 0 then
-         word_start <= '1';
-       else
+     if gen_data = '1' then 
+       if (wrd_cnt <= (word_sz-1)) then
+         mem_regs  := bit_in & mem_regs(0 to 30); --shift right and put in input bit
+         if wrd_cnt = 0 then
+           word_start <= '1';
+         else
+           word_start <= '0';
+         end if;
+         ready <= '1';
+         valid_data <= '1';
+         wrd_cnt := wrd_cnt+1;
+         if wrd_cnt = word_sz-1 then
+           ready <= '0';
+         end if;
+       elsif (count < m-1 and wrd_cnt >= word_sz-1) then --terminate word
+         mem_regs := '0' & mem_regs(0 to 30); --fill with zeros
          word_start <= '0';
+         ready      <= '0';
+         valid_data <= '1';
+         count      := count+1; 
+         wrd_cnt    := wrd_cnt +1;
        end if;
-       ready <= '1';
-       valid_data <= '1';
-       wrd_cnt := wrd_cnt+1;
-       
-     elsif (count <= m-1 and wrd_cnt >= word_sz-(m-2)) then --terminate word
-       mem_regs := '0' & mem_regs(0 to 30); --fill with zeros
-       word_start <= '0';
-       ready <= '0';
-       valid_data <= '1';
-       count := count+1;
-       
+       if (wrd_cnt) >= ((word_sz-1)+(m-1)) then
+         count   := 0; --start the count over for memory termination
+         wrd_cnt := 0; --start the word size count over
+         ready   <= '1'; --ready for more data word is finished.
+       end if;
      else
-       --mem_regs := (others => '0');
        word_start <= '0';
        ready      <= '1';
        valid_data <= '0';
-       count      := 0;
-       wrd_cnt    := 0;
      end if;
     -------- perform convolutional encoding ---------
      temp_val1 := mem_regs and temp_gen_poly1;
@@ -78,7 +84,7 @@ begin
      bits_out(0)<=temp_bit1; 
      bits_out(1)<=temp_bit2;
      --------------------------------------------------
-   end if;
+   end if; --end gen_data = '1'
    gen_data_r <= gen_data;
   end process encode;
  

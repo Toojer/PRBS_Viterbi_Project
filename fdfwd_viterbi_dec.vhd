@@ -142,110 +142,106 @@ begin
     variable nxt_output0,nxt_output1 : std_logic_vector(0 to 1) := (others => '0');  -- memory registers
     variable nxt_state0, nxt_state1 : std_logic_vector(0 to 1) := (others => '0'); -- next state calculation
     variable temp_bits_out : std_logic_vector(0 to wrd_sz-1) := (others => '0');  -- temp bits out placeholder
+    variable decode_word : std_logic := '0';  --This tells trellis that the word has started and to start at 0
   begin  -- process decode
     
     if (rising_edge(clk)) then  -- rising clock edge and valid data
-      ready        <= '1';
+      ready        <= '1'; --decoder is always ready for input, unless outputting decoded word handled at bottom.
       word_start_r <= word_start;
-      if valid_data = '1' then
+      --if valid_data = '1' then
       -------  Loop on trellis array building the trellis  -------------
-        tr_loop:for i in trellis'range loop
-          
-          if trellis(i).valid_data = '1' then 
-            if ((word_start_r = '0') and (word_start = '1') and i=0) then --starting at state 0 of trellis
-              temp_trellis                  := (others => trellis_defaults);
-              temp_trellis(0).valid_data    := '1'; --this will cause the loop to calculate the next output
-              --temp_trellis(0).path_metric   := 100; --this will garauntee that we replace path_metric on the first loop
-              ml_word_out                   <= (others => 'U');
-            end if;
-                    --verify trellis has a value before calculating-------------
-            --multiply the next states by mem_regs to get the predicted outputs and states.  States used as indices for array placement
-            nxt_state0    := next_state(std_logic_vector(to_unsigned(i,m)),'0'); --get next state for 0 and 1 paths
-            nxt_state1    := next_state(std_logic_vector(to_unsigned(i,m)),'1');  
-            nxt_output0   := next_output(nxt_state0,gen_poly1,gen_poly2); --get next output for 0 and 1 paths
-            nxt_output1   := next_output(nxt_state1,gen_poly1,gen_poly2);
-            --compare that to bits_in to get the path_metric and bits_out 
-            temp_p_metric := trellis(i).path_metric;    --store metric values
-            temp_bits_out := trellis(i).bits_out;       --store bits out
-            temp0         := temp_p_metric + branch_metric(bits_in,nxt_output0);
-            temp1         := temp_p_metric + branch_metric(bits_in,nxt_output1);
-            temp_state0   := correct_state(nxt_state0);
-            temp_state1   := correct_state(nxt_state1);
-            if i=0 then temp_trellis := (others => trellis_defaults); end if;
+        if ((word_start_r = '0') and (word_start = '1')) then --starting at state 0 of trellis
+          decode_word := '1'; 
+          ml_word_out <= (others => 'U');
+        end if;
+        if decode_word = '1' then
+          tr_loop:for i in trellis'range loop
+            if trellis(i).valid_data = '1' then 
+              --multiply the next states by mem_regs to get the predicted outputs and states.  States used as indices for array placement
+              nxt_state0    := next_state(std_logic_vector(to_unsigned(i,m)),'0'); --get next state for 0 and 1 paths
+              nxt_state1    := next_state(std_logic_vector(to_unsigned(i,m)),'1');  
+              nxt_output0   := next_output(nxt_state0,gen_poly1,gen_poly2); --get next output for 0 and 1 paths
+              nxt_output1   := next_output(nxt_state1,gen_poly1,gen_poly2);
+              --compare that to bits_in to get the path_metric and bits_out 
+              temp_p_metric := trellis(i).path_metric;    --store metric values
+              temp_bits_out := trellis(i).bits_out;       --store bits out
+              temp0         := temp_p_metric + branch_metric(bits_in,nxt_output0);
+              temp1         := temp_p_metric + branch_metric(bits_in,nxt_output1);
+              temp_state0   := correct_state(nxt_state0);
+              temp_state1   := correct_state(nxt_state1);
+              if i=0 then temp_trellis := (others => trellis_defaults); end if;
             
-            if t < (wrd_sz-(m-1)) then--building up and going through the trellis
-               
-              -- Set the zero path ---
-              if temp_trellis(temp_state0).valid_data = '1' then --if the 1st path has already assigned find the smallest metric and store it
-                if (temp_trellis(temp_state0).path_metric >= temp0) then
-                  temp_trellis(temp_state0).path_metric := temp0; --replace this path metric because its lower
-                  temp_trellis(temp_state0).bits_out    := temp_bits_out;
-                  temp_trellis(temp_state0).bits_out(t) := '0'; -- place the 0 in t position of trellis. 
-                  temp_trellis(temp_state0).valid_data  := '1';              
+              if t < (wrd_sz-(m-1)) then--building up and going through the trellis 
+                -- Set the zero path ---
+                if temp_trellis(temp_state0).valid_data = '1' then --if the 1st path has already assigned find the smallest metric and store it
+                  if (temp_trellis(temp_state0).path_metric >= temp0) then
+                    temp_trellis(temp_state0).path_metric := temp0; --replace this path metric because its lower
+                    temp_trellis(temp_state0).bits_out    := temp_bits_out;
+                    temp_trellis(temp_state0).bits_out(t) := '0'; -- place the 0 in t position of trellis. 
+                    temp_trellis(temp_state0).valid_data  := '1';              
+                  end if;
+                else --if not set fill in trellis position and mark as set
+                  temp_trellis(temp_state0).path_metric   := temp0; -- fill empty trellis state
+                  temp_trellis(temp_state0).bits_out      := temp_bits_out;
+                  temp_trellis(temp_state0).bits_out(t)   := '0';   -- place the 0 in t position of trellis.
+                  temp_trellis(temp_state0).valid_data    := '1';   -- set flag that this is set
                 end if;
-              else --if not set fill in trellis position and mark as set
-                temp_trellis(temp_state0).path_metric   := temp0; -- fill empty trellis state
-                temp_trellis(temp_state0).bits_out      := temp_bits_out;
-                temp_trellis(temp_state0).bits_out(t)   := '0';   -- place the 0 in t position of trellis.
-                temp_trellis(temp_state0).valid_data    := '1';   -- set flag that this is set
-              end if;
-              ------------------------
+                ------------------------
           
-              -- Set the one path ----
-              if temp_trellis(temp_state1).valid_data = '1' then 
-                if (temp_trellis(temp_state1).path_metric >= temp1) then 
-                  temp_trellis(temp_state1).path_metric := temp1; --replace this path metric because its lower
-                  temp_trellis(temp_state1).bits_out    := temp_bits_out;          
-                  temp_trellis(temp_state1).bits_out(t) := '1'; -- place the 1 in t position of trellis.
-                  temp_trellis(temp_state1).valid_data    := '1';               
+                -- Set the one path ----
+                if temp_trellis(temp_state1).valid_data = '1' then 
+                  if (temp_trellis(temp_state1).path_metric >= temp1) then 
+                    temp_trellis(temp_state1).path_metric := temp1; --replace this path metric because its lower
+                    temp_trellis(temp_state1).bits_out    := temp_bits_out;          
+                    temp_trellis(temp_state1).bits_out(t) := '1'; -- place the 1 in t position of trellis.
+                    temp_trellis(temp_state1).valid_data    := '1';               
+                  end if;
+                else --if not set fill in trellis position and mark as set
+                  temp_trellis(temp_state1).path_metric   := temp1; -- fill empty trellis state
+                  temp_trellis(temp_state1).bits_out      := temp_bits_out;
+                  temp_trellis(temp_state1).bits_out(t)   := '1';   -- place the 1 in t position of trellis representing the bit for this position.
+                  temp_trellis(temp_state1).valid_data    := '1';   -- set flag that this is set       
                 end if;
-              else --if not set fill in trellis position and mark as set
-                temp_trellis(temp_state1).path_metric   := temp1; -- fill empty trellis state
-                temp_trellis(temp_state1).bits_out      := temp_bits_out;
-                temp_trellis(temp_state1).bits_out(t)   := '1';   -- place the 1 in t position of trellis representing the bit for this position.
-                temp_trellis(temp_state1).valid_data    := '1';   -- set flag that this is set       
-              end if;
-              ------------------------
+                ------------------------
           
-            elsif ((t >= wrd_sz-(m-1)) and (t < wrd_sz+(m-2))) then --terminating trellis
+              elsif ((t >= wrd_sz-(m-1)) and (t < ((wrd_sz-1)+(m-1)))) then --terminating trellis
 
-              -- Set the zero path ----
-              if trellis(temp_state0).valid_data = '1' then --if the 1st path has already assigned find the smallest metric and store it
-                if (trellis(temp_state0).path_metric >= temp0) then 
-                  temp_trellis(temp_state0).path_metric   := temp0; --replace this path metric because its lower
-                  temp_trellis(temp_state0).bits_out      := temp_bits_out;                                                              
-                  temp_trellis(temp_state0).bits_out(t)   := '0'; -- place the 0 in t position of trellis. 
-                  temp_trellis(temp_state0).valid_data    := '1';              
+                -- Set the zero path ----
+                if trellis(temp_state0).valid_data = '1' then --if the 1st path has already assigned find the smallest metric and store it
+                  if (trellis(temp_state0).path_metric >= temp0) then 
+                    temp_trellis(temp_state0).path_metric   := temp0; --replace this path metric because its lower
+                    temp_trellis(temp_state0).bits_out      := temp_bits_out;                                                              
+                    temp_trellis(temp_state0).bits_out(t)   := '0'; -- place the 0 in t position of trellis. 
+                    temp_trellis(temp_state0).valid_data    := '1';              
+                  end if;
+                else --if not set fill in trellis position and mark as set
+                  temp_trellis(temp_state0).path_metric     := temp0; -- fill empty trellis state
+                  temp_trellis(temp_state0).bits_out        := temp_bits_out;
+                  temp_trellis(temp_state0).bits_out(t)     := '0';   -- place the 0 in t position of trellis.
+                  temp_trellis(temp_state0).valid_data      := '1';   -- set flag that this is set
                 end if;
-              else --if not set fill in trellis position and mark as set
-                temp_trellis(temp_state0).path_metric     := temp0; -- fill empty trellis state
-                temp_trellis(temp_state0).bits_out        := temp_bits_out;
-                temp_trellis(temp_state0).bits_out(t)     := '0';   -- place the 0 in t position of trellis.
-                temp_trellis(temp_state0).valid_data      := '1';   -- set flag that this is set
-              end if;
-             
-            ------------------------
-            else--we've reached the end of the word input and need to output decoded word
-              for cnt in trellis'range loop
-                if trellis(cnt).valid_data = '1' then
-                  ml_word_out <= trellis(cnt).bits_out;
-                  trellis(0)  <= trellis_start;
-                  temp_trellis(0) := trellis_start;
-                  --temp_trellis(0).path_metric := 100;
-                  t := -1;
-                end if;
-              end loop;
-              exit tr_loop; -- exit the for loop we've already found the word.
-            end if; --end trellis if statements
-          
-          end if;--end trellis(i).valid_data='1'
-        
-         end loop;
+              ------------------------
+              else--we've reached the end of the word input and need to output decoded word
+                for cnt in trellis'range loop
+                  if trellis(cnt).valid_data = '1' then
+                    ml_word_out <= trellis(cnt).bits_out;
+                    trellis(0)  <= trellis_start;
+                    temp_trellis(0) := trellis_start;
+                    decode_word := '0'; 
+                    t := -1;
+                  end if;
+                end loop;
+                exit tr_loop; -- exit the for loop we've already found the decoded word.
+              end if; --end trellis if statements        
+            end if;--end trellis(i).valid_data='1'
+          end loop;
           trellis <= temp_trellis;
           t := t+1;
-          if t = wrd_sz+(m-2) then ready <= '0'; end if; --send signal so no more bits are input
-        end if; --valid_data = 1
-      end if; -- end rising edge clock if statement
-    end process decode;
+          if t = ((wrd_sz-1)+(m-1)) then ready <= '0'; end if; --send signal so no more bits are input
+        end if; --end decode_word = '1'
+          
+      --end if; --valid_data = 1
+    end if; -- end rising edge clock if statement
+  end process decode;
       
 end Behavioral;

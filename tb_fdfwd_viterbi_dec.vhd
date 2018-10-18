@@ -72,9 +72,9 @@ end tb_fdfwd_viterbi_dec;
   signal gen_poly1 : std_logic_vector(0 to m-1):="11" ;--3 
   signal gen_poly2 : std_logic_vector(0 to m-1):="01" ;--1
   signal bit_in : std_logic := '1';     -- bit input to encoder
-  signal generate_data : std_logic := '0';  -- generate data strobe
+  signal decoder_rdy : std_logic := '0';  -- generate data strobe
   signal encoded_bits : std_logic_vector(0 to 1) := "10";  -- encoded bits into decoder
-  signal valid_data : std_logic := '0';  -- valid data strobe
+  signal enc_valid_data : std_logic := '0';  -- encoder valid data strobe
   signal word_start : std_logic := '0';  -- word has started strobe
   signal encoder_rdy : std_logic := '0';  -- encoder's ready strobe
   signal decoded_word : std_logic_vector(0 to word_size-1):=(others => '0');  -- decoded word
@@ -83,7 +83,7 @@ end tb_fdfwd_viterbi_dec;
   signal prbs_valid_data : std_logic := '0';
   signal reset : std_logic := '0';
   signal prbs_lock,prbs_sync : std_logic :='0';
-  signal generatedata : std_logic := '0';
+  signal enc_dec_rdy,prbsgen_dec_rdy : std_logic := '1';
 begin
    prbs_generte: entity work.prbs_gen
       generic map (
@@ -91,7 +91,7 @@ begin
       port map (
         clk            => clk,
         reset          => reset,
-        gen_data       => encoder_rdy,
+        gen_data       => enc_dec_rdy,
         gen_err        => generate_err,
         taps           => prbs_taps,
         data_valid_out => prbs_valid_data,
@@ -120,9 +120,9 @@ begin
        gen_poly1  => gen_poly1,
        gen_poly2  => gen_poly2,
        bit_in     => bit_in,
-       gen_data   => generatedata,
+       gen_data   => prbsgen_dec_rdy,
        bits_out   => encoded_bits,
-       valid_data => valid_data,
+       valid_data => enc_valid_data,
        word_start => word_start,
        ready      => encoder_rdy);
        
@@ -134,18 +134,21 @@ begin
       clk         => clk,
       gen_poly1   => gen_poly1,
       gen_poly2   => gen_poly2,
-      valid_data  => valid_data,
+      valid_data  => enc_valid_data,
       word_start  => word_start,
       bits_in     => encoded_bits,
       ml_word_out => decoded_word,
-      ready       => generate_data);
+      ready       => decoder_rdy);
    
 data: process
 begin  -- process data
  
  wait for 1 ns;
-  generatedata <= generate_data and encoder_rdy;
- clk <= not clk;
+ if rising_edge(clk) then
+  prbsgen_dec_rdy <= prbs_valid_data and decoder_rdy;
+  enc_dec_rdy     <= encoder_rdy and decoder_rdy;
+ end if;
+  clk <= not clk;
 end process data;
  
  
