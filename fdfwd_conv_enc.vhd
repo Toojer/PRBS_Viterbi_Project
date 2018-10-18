@@ -57,7 +57,7 @@ begin
        count := count+1;
        
      else
-       mem_regs := (others => '0');
+       --mem_regs := (others => '0');
        word_start <= '0';
        ready      <= '1';
        valid_data <= '0';
