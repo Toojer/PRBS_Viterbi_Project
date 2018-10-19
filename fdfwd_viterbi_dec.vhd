@@ -237,7 +237,7 @@ begin
           end loop;
           trellis <= temp_trellis;
           t := t+1;
-          if t = ((wrd_sz-1)+(m-1)) then ready <= '0'; end if; --send signal so no more bits are input
+          if t = ((wrd_sz-2)+(m-1)) then ready <= '0'; end if; --send signal so no more bits are input
         end if; --end decode_word = '1'
           
       --end if; --valid_data = 1

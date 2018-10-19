@@ -144,7 +144,7 @@ data: process
 begin  -- process data
  
  wait for 1 ns;
- if rising_edge(clk) then
+ if clk='1' then
   prbsgen_dec_rdy <= prbs_valid_data and decoder_rdy;
   enc_dec_rdy     <= encoder_rdy and decoder_rdy;
  end if;
