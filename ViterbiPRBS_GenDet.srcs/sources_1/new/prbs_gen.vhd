@@ -51,6 +51,7 @@ begin
           -------------------------------------------------
         else
           data_valid_out <= '0'; --send signal that no valid data is being output
+          bit_out <= temp_fdbk_bit; --keep sending the same value out if valid data not high
         end if; --******making sure gen_data is high before outputing data
         ------------   IF RESET IS PRESSED --------------
         IF reset = '1' Then
