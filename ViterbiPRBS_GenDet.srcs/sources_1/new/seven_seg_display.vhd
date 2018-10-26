@@ -16,7 +16,7 @@ begin
 
   --divide clock for anode enable
   clk_div: process (clk) is
-    variable clkdiv : unsigned(19 downto 0) := (others => '0');
+    variable clkdiv : unsigned(19 downto 0) := (others => '0'); --used to be 19 downto 0
     variable s : unsigned(1 downto 0) := "00";  -- this is used to control the anode_en using the clock division
     variable indx : integer := 0;
     variable temp_digit : std_logic_vector(3 downto 0) := (others => '0');  -- temp digit output
