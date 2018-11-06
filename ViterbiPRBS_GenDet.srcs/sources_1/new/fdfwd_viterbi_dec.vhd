@@ -135,6 +135,7 @@ architecture Behavioral of fdfwd_viterbi_dec is
 --are.  I attempted to make the package generic, but have not found a way to make it work as a generic package
   signal trellis : trellis_array := (0=>trellis_start,others => trellis_defaults);  -- these is the previous values of the trellis
   signal word_start_r : std_logic := '0';
+  signal bits_in_r  : std_logic_vector(0 to 1) := "00";
 begin
   decode: process (clk)
     variable t,temp_p_metric,temp0,temp1,temp_state0,temp_state1 : integer := 0;
@@ -154,6 +155,7 @@ begin
           decode_word := '1'; 
           ml_word_out <= (others => 'U');
         end if;
+        bits_in_r <= bits_in;
         if decode_word = '1' then
           tr_loop:for i in trellis'range loop
             if trellis(i).valid_data = '1' then 
@@ -178,7 +180,7 @@ begin
                     temp_trellis(temp_state0).path_metric := temp0; --replace this path metric because its lower
                     temp_trellis(temp_state0).bits_out    := temp_bits_out;
                     temp_trellis(temp_state0).bits_out(t) := '0'; -- place the 0 in t position of trellis. 
-                    temp_trellis(temp_state0).valid_data  := '1';              
+                    temp_trellis(temp_state0).valid_data  := '1';            
                   end if;
                 else --if not set fill in trellis position and mark as set
                   temp_trellis(temp_state0).path_metric   := temp0; -- fill empty trellis state
@@ -203,12 +205,11 @@ begin
                   temp_trellis(temp_state1).valid_data    := '1';   -- set flag that this is set       
                 end if;
                 ------------------------
-          
               elsif ((t >= wrd_sz-(m-1)) and (t < ((wrd_sz-1)+(m-1)))) then --terminating trellis
-
                 -- Set the zero path ----
-                if trellis(temp_state0).valid_data = '1' then --if the 1st path has already assigned find the smallest metric and store it
-                  if (trellis(temp_state0).path_metric >= temp0) then 
+                --*******I changed this first if statement from trellis to temp_trellis, not sure why it was trellis
+                if temp_trellis(temp_state0).valid_data = '1' then --if the 1st path has already assigned find the smallest metric and store it
+                  if (temp_trellis(temp_state0).path_metric >= temp0) then 
                     temp_trellis(temp_state0).path_metric   := temp0; --replace this path metric because its lower
                     temp_trellis(temp_state0).bits_out      := temp_bits_out;                                                              
                     temp_trellis(temp_state0).bits_out(t)   := '0'; -- place the 0 in t position of trellis. 

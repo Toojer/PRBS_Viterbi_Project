@@ -42,7 +42,7 @@ begin
           END loop;
           -------------------------------------------------
           --------- Count Errors for feedback loop when detecting --------
-          if ((count > taps'length)) then 
+          if ((count > 1000)) then --3*taps'length)) then 
             temp_lock <= '1';
           else
             temp_lock <= '0';
@@ -59,7 +59,7 @@ begin
               count      := (others=>'0');
               sync       <= '0';
               temp_errors:= (others =>'0');
-            elsif(temp_errors < 100000 and count > "11111111111111111100"  ) then 
+            elsif(temp_errors < 1000000 and count > "11111111111111111100"  ) then 
             --after it recieves 1048573 bits with < 100000 errors
               --temp_lock  <= '1';
               sync       <= '1';
