@@ -27,7 +27,7 @@ end tb_fdfwd_viterbi_dec;
        clk     : in std_logic;                     
        reset   : in std_logic;              -- resets
        gen_data: in std_logic;              --tells PRBS to start generating
-      -- prbsgen_det_rdy: in std_logic;  ----******added in after the fact******
+       enc_gen_data: in std_logic;  ----******added in after the fact******
        gen_err : in std_logic;              -- high signal will generate 1 error
        taps    : in std_logic_vector(0 to n);  -- taps vector
        data_valid_out : out std_logic;        -- used as flag to signal valid data generating
@@ -124,7 +124,7 @@ begin
         clk            => clk,
         reset          => reset,
         gen_data       => enc_dec_rdy,
-      --  prbsgen_dec_rdy=> prbsgen_dec_rdy1,
+        enc_gen_data   => prbsgen_dec_rdy1,
         gen_err        => generate_err,
         taps           => prbs_taps,
         data_valid_out => prbs_valid_data,

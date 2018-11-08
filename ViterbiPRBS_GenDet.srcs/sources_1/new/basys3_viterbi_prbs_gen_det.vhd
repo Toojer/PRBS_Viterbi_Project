@@ -125,7 +125,6 @@ begin
        word_in    => decoded_word,
        bit_out    => fifo_bit_out,
        valid_data => fifo_val_data);
-          
 
   prbs_detect :  entity work.prbs_det generic map (
     n => 5)
