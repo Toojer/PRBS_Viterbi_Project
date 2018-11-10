@@ -51,11 +51,15 @@ architecture Behavioral of basys3_viterbi_prbs_gen_det is
   signal decoded_word : std_logic_vector(0 to word_size-1):=(others => 'U');  -- decoded word
   signal fifo_val_data : std_logic := '0';
   signal fifo_bit_out : std_logic := '0';
-  signal valid_data,word_start1 : std_logic :='0';
+  signal enc_valid_data,word_start1 : std_logic :='0';
   signal word_start : std_logic := '0';
   signal clk_6mhz,clk_deb,clk_deb_r,clk1: std_logic := '0';
   signal bits_out1: std_logic_vector(0 to 1):="00";
   signal clk_cnt :  unsigned(15 downto 0) := (others =>'0'); --clk debug count
+  signal valid_word: std_logic := '0';
+  signal prbs_bit_in ,prbs_fifo_bit,prbs_fifo_val,enc_fifo_data_val,enc_fifo_wrdsrt_val : std_logic:= '0'; --prbs output bit from fifo
+  signal enc_fifo_bits : std_logic_vector(0 to 1):="00";
+  signal enc_fifo_val_data,enc_fifo_wrdsrt : std_logic := '0';
 begin
 
 
@@ -83,60 +87,101 @@ begin
     port map (
     clk            => clk_6mhz, --clk_deb,
     reset          => reset,
-    enc_gen_data   => valid_data,  --added to help prbs not to output bits before encoder ready
-    gen_data       => enc_dec_rdy,
+    --enc_gen_data   => valid_data,  --added to help prbs not to output bits before encoder ready
+    gen_data       => encoder_rdy,
     gen_err        => gen_error,
     taps           => taps_vector,
     data_valid_out => prbs_valid_data,
     bit_out        => bit_in);
 
+  prbs_fifo: entity work.fifo_1bit
+   port map(
+     clk        => clk_6mhz,
+     valid_bit  => prbs_valid_data,
+     word_in    => bit_in,
+     data_req   => encoder_rdy,
+     bit_out    => prbs_fifo_bit,
+     valid_data => prbs_fifo_val);
+  
   vit_encoder : entity work.fdfwd_conv_enc
     generic map (
       m => m,
       word_sz => word_size)
     port map (
-      clk        => clk_6mhz, --clk_deb,
+      clk        => clk_6mhz, 
       gen_poly1  => gen_poly1,
       gen_poly2  => gen_poly2,
-      bit_in     => bit_in,
-      gen_data   => prbsgen_dec_rdy,
-      bits_out   => bits_out1,  --bits_out(0 to 1)
-      valid_data => valid_data,--valid_data_out,
-      word_start => word_start1, --word_start_out,
+      bit_in     => prbs_fifo_bit,
+      gen_data   => prbs_fifo_val,
+      bits_out   => bits_out1,  
+      valid_data => enc_valid_data,
+      word_start => word_start1, 
       ready      => encoder_rdy);
+      
+  enc_fifo_data: entity work.fifo_nbit
+    generic map ( n=>2 )
+    port map(
+      clk        => clk_6mhz,
+      valid_bit  => enc_valid_data,
+      word_in    => bits_out1,
+      data_req   => decoder_rdy,
+      bit_out    => enc_fifo_bits,
+      valid_data => enc_fifo_data_val);
+  
+  enc_fifo_wordstart: entity work.fifo_1bit
+    port map(
+      clk        => clk_6mhz,
+      valid_bit  => enc_valid_data,
+      word_in    => word_start1,
+      data_req   => decoder_rdy,
+      bit_out    => enc_fifo_wrdsrt,
+      valid_data => enc_fifo_wrdsrt_val);
+      
+  enc_fifo_val_data <= enc_fifo_data_val and enc_fifo_wrdsrt_val;
       
   vit_decoder : entity work.fdfwd_viterbi_dec
     generic map (
       m      => m,
       wrd_sz => word_size)
     port map (
-      clk         => clk_6mhz, --clk_deb,
+      clk         => clk_6mhz, 
       gen_poly1   => gen_poly1,
       gen_poly2   => gen_poly2,
-      valid_data  => valid_data,--valid_data_in,
-      word_start  => word_start1,--word_start_in,
-      bits_in     => bits_out1,--bits_in(0 to 1)
+      valid_data  => enc_fifo_val_data,
+      word_start  => word_start1,
+      bits_in     => enc_fifo_bits,
       ml_word_out => decoded_word,
+      valid_word  => valid_word,
       ready       => decoder_rdy);
       
-   fifo: entity work.word_feeder
-     port map (
-       clk        => clk_6mhz, --clk_deb,
-       word_in    => decoded_word,
-       bit_out    => fifo_bit_out,
-       valid_data => fifo_val_data);
+    decoder_fifo: entity work.dec_fifo
+     port map(
+        clk        => clk_6mhz,
+        valid_word => valid_word,
+        word_in    => decoded_word,
+        data_req   => '1', --always output if there is valid data to output.
+        bit_out    => fifo_bit_out,
+        valid_data => fifo_val_data);  
+      
+--   fifo: entity work.word_feeder
+--     port map (
+--       clk        => clk_6mhz, --clk_deb,
+--       word_in    => decoded_word,
+--       bit_out    => fifo_bit_out,
+--       valid_data => fifo_val_data);
 
-  prbs_detect :  entity work.prbs_det generic map (
-    n => 5)
+  prbs_detect :  entity work.prbs_det 
+    generic map (
+      n => 5)
     port map (
-    clk        => clk_6mhz, --clk_deb,
-    reset      => reset,
-    valid_data => fifo_val_data,
-    bit_in     => fifo_bit_out,
-    taps       => taps_vector,
-    lock       => lock,
-    sync       => sync,
-    errors     => prbs_errors);
+      clk        => clk_6mhz, --clk_deb,
+      reset      => reset,
+      valid_data => fifo_val_data,
+      bit_in     => fifo_bit_out,
+      taps       => taps_vector,
+      lock       => lock,
+      sync       => sync,
+      errors     => prbs_errors);
     
   Seg7Disp : entity work.seven_seg_display port map (
     number   => prbs_errors, 
@@ -145,18 +190,18 @@ begin
     digit    => digit,
     anode_en => anode_en);
   
-  bits_out          <= bits_out1;
+  bits_out          <= enc_fifo_bits;
   fifo_out          <= fifo_bit_out;
   fifo_valid        <= fifo_val_data;
   enc_rdy           <= encoder_rdy;
   dec_rdy           <= decoder_rdy;
   prbs_val_data     <= prbs_valid_data;
   prbsgen_dec_ready <= prbsgen_dec_rdy;
-  enc_dec_ready     <= enc_dec_rdy;
-  word_start_out    <= word_start1;
-  valid_data_out    <= valid_data;
- -- clk_out           <= clk_deb;
-  decoded_word0     <= decoded_word(4);
-  decoded_word1     <= decoded_word(5);
+  enc_dec_ready     <= valid_word;
+  word_start_out    <= enc_fifo_wrdsrt;
+  valid_data_out    <= enc_fifo_val_data;
+  --clk_out           <= clk_deb;
+  decoded_word0     <= decoded_word(7);
+  decoded_word1     <= decoded_word(8);
     
 end architecture Behavioral;

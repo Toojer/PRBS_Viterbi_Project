@@ -31,7 +31,7 @@ begin
     clk            => clk,
     reset          => reset,
     gen_data       => gen_data,
-    enc_gen_data   => '1', --added to help prbs_gen know to not continue output unless encoder is ready
+   -- enc_gen_data   => '1', --added to help prbs_gen know to not continue output unless encoder is ready
     gen_err        => gen_error,
     taps           => taps_vector,
     data_valid_out => valid_data_out,

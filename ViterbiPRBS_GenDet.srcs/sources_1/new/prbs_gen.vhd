@@ -7,7 +7,7 @@ entity prbs_gen is
     Port ( clk          : in    STD_LOGIC;
            reset        : in    STD_LOGIC;
            gen_data     : in    STD_LOGIC; 
-           enc_gen_data : in    std_logic; --let's prbs gen know to continue output
+         --  enc_gen_data : in    std_logic; --let's prbs gen know to continue output
            gen_err      : in    STD_LOGIC; 
            taps         : in    STD_LOGIC_VECTOR(0 to (n-1));
            data_valid_out   : out   STD_LOGIC; --lets data receiver know valid data is being produced
@@ -20,7 +20,7 @@ architecture Behavioral of prbs_gen is
     signal gen_data_r : std_logic := '0';  --This will delay prbs output by 1 to get last bit out.
     --signal bit_out_r : std_logic := '0';
     signal enc_ready : std_logic := '0';  --tells when the encoder has had a valid_output and PRBS can continue.
-    signal cnt : integer := 0; -- makes sure only one prbs bit is output prior to enc_ready signalling encoder is ready
+    --signal cnt : integer := 0; -- makes sure only one prbs bit is output prior to enc_ready signalling encoder is ready
 begin 
 
   debounce: entity work.debouncer port map (clk => clk, signal_in => gen_err, signal_out => gen_err_temp);
@@ -38,7 +38,7 @@ begin
         if gen_data = '1' then 
           gen_err_r   <= gen_err_temp;
           data_valid_out <= '1';
-          if enc_gen_data = '1' or cnt < 1 then --if enc_gen_data = '1' or cnt < 1 then
+          --if enc_gen_data = '1' or cnt < 1 then --if enc_gen_data = '1' or cnt < 1 then
             temp_fdbk_bit := '0'; --make sure it start as 0 
             temp_mem := temp_reg AND temp_taps;
             --------------- FEEDBACK LOOP -------------------
@@ -49,12 +49,12 @@ begin
             temp_reg      := temp_fdbk_bit & temp_reg(0 to 30); --shift right and place new bit in front register
             temp_mem      := temp_reg AND temp_taps; --get feedback lines to XOR        
             --data_valid_out <= '1';
-          end if;
-          if enc_gen_data = '0' then
-            cnt <= 1; --make sure only one prbs bit is output when encoder not ready
-          else
-            cnt <= 0; 
-          end if;
+          --end if;
+          --if enc_gen_data = '0' then
+          --  cnt <= 1; --make sure only one prbs bit is output when encoder not ready
+          --else
+          --  cnt <= 0; 
+          --end if;
           
           ----------- Generate Error Logic -----------------
           if (gen_err_r = '0' and gen_err_temp = '1') then -- generate only one error on gen_error high signal after debouncer

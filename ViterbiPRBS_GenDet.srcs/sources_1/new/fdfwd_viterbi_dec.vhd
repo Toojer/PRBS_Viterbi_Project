@@ -125,6 +125,7 @@ entity fdfwd_viterbi_dec is
            word_start : in std_logic;
            bits_in : in std_logic_vector(0 to 1);
            ml_word_out : out std_logic_vector(0 to wrd_sz-1);
+           valid_word : out std_logic;
            ready : out std_logic);
 end fdfwd_viterbi_dec;
 
@@ -153,7 +154,8 @@ begin
       -------  Loop on trellis array building the trellis  -------------
         if ((word_start_r = '0') and (word_start = '1')) then --starting at state 0 of trellis
           decode_word := '1'; 
-          ml_word_out <= (others => 'U');
+          ml_word_out <= (others => '1');
+          valid_word <= '0';
         end if;
         bits_in_r <= bits_in;
         if decode_word = '1' then
@@ -167,8 +169,8 @@ begin
               --compare that to bits_in to get the path_metric and bits_out 
               temp_p_metric := trellis(i).path_metric;    --store metric values
               temp_bits_out := trellis(i).bits_out;       --store bits out
-              temp0         := temp_p_metric + branch_metric(bits_in,nxt_output0);
-              temp1         := temp_p_metric + branch_metric(bits_in,nxt_output1);
+              temp0         := temp_p_metric + branch_metric(bits_in_r,nxt_output0);
+              temp1         := temp_p_metric + branch_metric(bits_in_r,nxt_output1);
               temp_state0   := correct_state(nxt_state0);
               temp_state1   := correct_state(nxt_state1);
               if i=0 then temp_trellis := (others => trellis_defaults); end if;
@@ -226,6 +228,7 @@ begin
                 for cnt in trellis'range loop
                   if trellis(cnt).valid_data = '1' then
                     ml_word_out <= trellis(cnt).bits_out;
+                    valid_word  <= '1';
                     trellis(0)  <= trellis_start;
                     temp_trellis(0) := trellis_start;
                     decode_word := '0'; 

@@ -42,9 +42,10 @@ begin
    --------------------------------------------
    if rising_edge(clk) then 
      bit_in_r <= bit_in;
-     if gen_data = '1' and cnt > 1 then 
-      -- if (wrd_cnt < (word_sz-(m-1))) then
-       if (wrd_cnt < word_sz+(m-1)) then
+     gen_data_r <= gen_data;
+     if gen_data = '1' then 
+      if (wrd_cnt <= (word_sz-(m-1))) then
+      --if (wrd_cnt < word_sz+(m-1)) then
          mem_regs  := bit_in & mem_regs(0 to 30); --shift right and put in input bit
          if wrd_cnt = 0 then
            word_start <= '1';
@@ -57,22 +58,22 @@ begin
          if wrd_cnt = word_sz-1 then
            ready <= '0';
          end if;
-       elsif (count < m-1 and wrd_cnt >= word_sz) then --terminate word
+       elsif (count < m-1 and wrd_cnt >= word_sz-1) then --terminate word
          mem_regs := '0' & mem_regs(0 to 30); --fill with zeros
          word_start <= '0';
          ready      <= '0';
          valid_data <= '1';
          count      := count+1; 
-         wrd_cnt    := wrd_cnt +1;
+         --wrd_cnt    := wrd_cnt +1;
        end if;
-       if (wrd_cnt) >= ((word_sz)+(m-1)) then
+       if (wrd_cnt) >= ((word_sz-1)+(m-1)) then
          count   := 0; --start the count over for memory termination
          wrd_cnt := 0; --start the word size count over
          ready   <= '1'; --ready for more data word is finished.
-         cnt     <= 0;
+         --cnt     <= 0;
        end if;
      else
-       cnt <= cnt + 1;
+       --cnt <= cnt + 1;
        word_start <= '0';
        ready      <= '1';
        valid_data <= '0';
