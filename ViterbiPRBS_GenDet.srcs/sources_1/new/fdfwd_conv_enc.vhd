@@ -1,3 +1,5 @@
+--This always has at least on bit missing when decoding.  
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
@@ -22,6 +24,8 @@ end fdfwd_conv_enc;
 
 architecture Behavioral of fdfwd_conv_enc is
   signal gen_data_r : std_logic := '0';  -- check to see if this is the start of a word
+  signal bit_in_r : std_logic := '0'; --keeps track of previous bit so we don't miss first bit of prbs_gen
+  signal cnt : integer := 0;
 begin
   encode: process (clk) is
     variable mem_regs : std_logic_vector(0 to 31):= (others => '0');
@@ -37,9 +41,11 @@ begin
    end if;
    --------------------------------------------
    if rising_edge(clk) then 
-     --valid_data <= '0'; 
+     bit_in_r <= bit_in;
+     gen_data_r <= gen_data;
      if gen_data = '1' then 
-       if (wrd_cnt <= (word_sz-1)) then
+      if (wrd_cnt <= (word_sz-(m-1))) then
+      --if (wrd_cnt < word_sz+(m-1)) then
          mem_regs  := bit_in & mem_regs(0 to 30); --shift right and put in input bit
          if wrd_cnt = 0 then
            word_start <= '1';
@@ -58,14 +64,16 @@ begin
          ready      <= '0';
          valid_data <= '1';
          count      := count+1; 
-         wrd_cnt    := wrd_cnt +1;
+         --wrd_cnt    := wrd_cnt +1;
        end if;
        if (wrd_cnt) >= ((word_sz-1)+(m-1)) then
          count   := 0; --start the count over for memory termination
          wrd_cnt := 0; --start the word size count over
          ready   <= '1'; --ready for more data word is finished.
+         --cnt     <= 0;
        end if;
      else
+       --cnt <= cnt + 1;
        word_start <= '0';
        ready      <= '1';
        valid_data <= '0';

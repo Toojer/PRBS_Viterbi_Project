@@ -1,12 +1,16 @@
-	library IEEE;
+library IEEE;
+library unisim;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
+use unisim.vcomponents.all;
   
  entity tb_fdfwd_viterbi_dec is
 --  Port ( );
 end tb_fdfwd_viterbi_dec;
 
  architecture Behavioral of tb_fdfwd_viterbi_dec is
+
+
  
  component word_feeder is
    port (
@@ -22,7 +26,8 @@ end tb_fdfwd_viterbi_dec;
      port(
        clk     : in std_logic;                     
        reset   : in std_logic;              -- resets
-       gen_data: in std_logic;              --****tells PRBS to start generating
+       gen_data: in std_logic;              --tells PRBS to start generating
+       enc_gen_data: in std_logic;  ----******added in after the fact******
        gen_err : in std_logic;              -- high signal will generate 1 error
        taps    : in std_logic_vector(0 to n);  -- taps vector
        data_valid_out : out std_logic;        -- used as flag to signal valid data generating
@@ -71,7 +76,7 @@ end tb_fdfwd_viterbi_dec;
       word_start  : in  std_logic;      -- strobe to signal word is starting
       bits_in     : in  std_logic_vector(0 to 1);  -- bits in from viterbi encoder
       ml_word_out : out std_logic_vector(0 to word_sz);  -- word output after trellis completed
-      ready       : in  std_logic);  -- strobe to signal word decoded,  ready for input.
+      ready       : out  std_logic);  -- strobe to signal word decoded,  ready for input.
   end component fdfwd_viterbi_dec;
   constant word_size : integer := 31;--13;   -- size of the word sent
   constant m : integer := 2;            -- memory register size
@@ -92,12 +97,26 @@ end tb_fdfwd_viterbi_dec;
   signal prbs_valid_data : std_logic := '0';
   signal reset : std_logic := '0';
   signal prbs_lock,prbs_sync : std_logic :='0';
-  signal enc_dec_rdy,prbsgen_dec_rdy : std_logic := '1';
+  signal enc_dec_rdy,prbsgen_dec_rdy1 : std_logic := '1';
   signal fifo_val_data : std_logic := '0';
   signal fifo_bit_out : std_logic := '0';
   signal prbs_errors : std_logic_vector(15 downto 0) := (others => '0');
-begin
+ -- signal clk1:std_logic :='0';
   
+    
+  
+begin
+--   bufr_clk: bufr
+--      generic map (
+--        BUFR_DIVIDE => "1",
+--        SIM_DEVICE  => "7SERIES"
+--      )
+--      port map(
+--          O   => clk1,
+--          CE  => '0',
+--          CLR => '0',
+--          I   => clk);        
+
    prbs_generate: entity work.prbs_gen
       generic map (
          n => 5)
@@ -105,6 +124,7 @@ begin
         clk            => clk,
         reset          => reset,
         gen_data       => enc_dec_rdy,
+        enc_gen_data   => prbsgen_dec_rdy1,
         gen_err        => generate_err,
         taps           => prbs_taps,
         data_valid_out => prbs_valid_data,
@@ -119,7 +139,7 @@ begin
        gen_poly1  => gen_poly1,
        gen_poly2  => gen_poly2,
        bit_in     => bit_in,
-       gen_data   => prbsgen_dec_rdy,
+       gen_data   => prbsgen_dec_rdy1,
        bits_out   => encoded_bits,
        valid_data => enc_valid_data,
        word_start => word_start,
@@ -164,12 +184,19 @@ begin  -- process data
  
  wait for 1 ns;
  if clk='1' then
-  prbsgen_dec_rdy <= prbs_valid_data and decoder_rdy;
+  prbsgen_dec_rdy1 <= prbs_valid_data and decoder_rdy;
   enc_dec_rdy     <= encoder_rdy and decoder_rdy;
  end if;
   clk <= not clk;
 end process data;
- 
+
+errors: process
+begin
+  wait for 1ns;
+  if (clk='1' and prbs_sync = '1') then
+    generate_err <= not generate_err;
+  end if; 
+end process;
  
   
  end Behavioral;
