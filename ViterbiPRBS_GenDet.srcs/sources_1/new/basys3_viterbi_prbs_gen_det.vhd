@@ -9,7 +9,11 @@ entity basys3_viterbi_prbs_gen_det is
     clk      : in  std_logic;                       -- input clock 100MHz
     reset    : in  std_logic;                       -- reset
     gen_data : in  std_logic;                       -- switched flipped to generate data
-    gen_error : in std_logic;                       -- generate error for PRBS sequence
+    prbs_gen_error : in std_logic;                  -- generate error for PRBS sequence
+    enc_gen_err    : in std_logic;                  -- generate error on output of conv encoder
+    enc_gen10_err  : in std_logic;
+    enc_gen30_err  : in std_logic;
+    --enc_gen3_errors: in std_logic;
     bits_in : in std_logic_vector(0 to 1);          -- input from viterbi encoder
     valid_data_in : in std_logic;                   -- To PRBS_det flag to start tracking data
     word_start_in : in std_logic;                   -- strobe that new word started
@@ -28,6 +32,7 @@ entity basys3_viterbi_prbs_gen_det is
     decoded_word0  : out std_logic;
     decoded_word1  : out std_logic;
     --------------------------------------------------
+    encoder_err  : out std_logic;
     digit    : out std_logic_vector(6 downto 0);    -- digit displayed on 7 segment display
     anode_en : out std_logic_vector(3 downto 0);   -- anode enabled for 7 segment display
     lock     : out std_logic;                       -- lock prbs
@@ -60,6 +65,9 @@ architecture Behavioral of basys3_viterbi_prbs_gen_det is
   signal prbs_bit_in ,prbs_fifo_bit,prbs_fifo_val,enc_fifo_data_val,enc_fifo_wrdsrt_val : std_logic:= '0'; --prbs output bit from fifo
   signal enc_fifo_bits : std_logic_vector(0 to 1):="00";
   signal enc_fifo_val_data,enc_fifo_wrdsrt : std_logic := '0';
+  signal enc_gen_error_r:std_logic := '0';
+  --signal bits_out_r : std_logic_vector := "00";
+  signal bits_out2  : std_logic_vector(0 to 1) := "00";
 begin
 
 
@@ -73,23 +81,15 @@ begin
         CE  => '1',
         CLR => '0',
         I   => clk);
- 
--- process(clk_6mhz)
--- begin    
---   if rising_edge(clk_6mhz) then
---     prbsgen_dec_rdy <= prbs_valid_data and decoder_rdy and gen_data;
---     enc_dec_rdy     <= encoder_rdy and decoder_rdy;
---   end if; 
--- end process;
+        
     
   prbs_generate : entity work.prbs_gen generic map (
     n => 5)
     port map (
-    clk            => clk_6mhz, --clk_deb,
+    clk            => clk_6mhz, --clk_6mhz_deb,
     reset          => reset,
-    --enc_gen_data   => valid_data,  --added to help prbs not to output bits before encoder ready
     gen_data       => encoder_rdy,
-    gen_err        => gen_error,
+    gen_err        => prbs_gen_error,
     taps           => taps_vector,
     data_valid_out => prbs_valid_data,
     bit_out        => bit_in);
@@ -118,12 +118,22 @@ begin
       word_start => word_start1, 
       ready      => encoder_rdy);
       
+  enc_errs: entity work.enc_gen_errors
+    port map(
+      clk       => clk_6mhz,
+      gen_error => enc_gen_err,
+      gen_10err => enc_gen10_err,
+      gen_30err => enc_gen30_err,
+      bits_in   => bits_out1,
+      bits_out  => bits_out2,
+      enc_err   => encoder_err);
+      
   enc_fifo_data: entity work.fifo_nbit
     generic map ( n=>2 )
     port map(
       clk        => clk_6mhz,
       valid_bit  => enc_valid_data,
-      word_in    => bits_out1,
+      word_in    => bits_out2,
       data_req   => decoder_rdy,
       bit_out    => enc_fifo_bits,
       valid_data => enc_fifo_data_val);
@@ -153,8 +163,9 @@ begin
       ml_word_out => decoded_word,
       valid_word  => valid_word,
       ready       => decoder_rdy);
-      
-    decoder_fifo: entity work.dec_fifo
+     
+     
+  decoder_fifo: entity work.dec_fifo
      port map(
         clk        => clk_6mhz,
         valid_word => valid_word,
@@ -163,13 +174,6 @@ begin
         bit_out    => fifo_bit_out,
         valid_data => fifo_val_data);  
       
---   fifo: entity work.word_feeder
---     port map (
---       clk        => clk_6mhz, --clk_deb,
---       word_in    => decoded_word,
---       bit_out    => fifo_bit_out,
---       valid_data => fifo_val_data);
-
   prbs_detect :  entity work.prbs_det 
     generic map (
       n => 5)

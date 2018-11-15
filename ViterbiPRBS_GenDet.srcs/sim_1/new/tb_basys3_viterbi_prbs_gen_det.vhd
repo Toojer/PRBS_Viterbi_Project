@@ -14,7 +14,10 @@ component basys3_viterbi_prbs_gen_det is
     clk      : in  std_logic;                       -- input clock 100MHz
     reset    : in  std_logic;                       -- reset
     gen_data : in  std_logic;                       -- switched flipped to generate data
-    gen_error : in std_logic;                       -- generate error for PRBS sequence
+    prbs_gen_error : in std_logic;                       -- generate error for PRBS sequence
+    enc_gen_error  : in std_logic;
+    enc_gen10_err  : in std_logic;
+    enc_gen30_err  : in std_logic;
     bits_in : in std_logic_vector(0 to 1);          -- input from viterbi encoder
     valid_data_in : in std_logic;                   -- To PRBS_det flag to start tracking data
     word_start_in : in std_logic;                   -- strobe that new word started
@@ -31,6 +34,7 @@ component basys3_viterbi_prbs_gen_det is
     enc_dec_ready : out std_logic;
     --clk_out   : out std_logic;                     
     --------------------------------------------------
+    enc_err    : out std_logic;
     digit    : out std_logic_vector(6 downto 0);    -- digit displayed on 7 segment display
     anode_en : out std_logic_vector(3 downto 0);   -- anode enabled for 7 segment display
     lock     : out std_logic;                       -- lock prbs
@@ -47,7 +51,8 @@ signal word_start : std_logic := '1';
 signal digits : std_logic_vector(6 downto 0) := (others => '0');
 signal an_en : std_logic_vector(3 downto 0) := (others => '0');
 signal prbs_sync,prbs_lock : std_logic := '0';
-signal fifo_out,fifo_valid,encod_rdy,decoder_rdy,prbs_valid_data,prbsgen_dec_rdy,enc_dec_rdy:std_logic := '0';
+signal enc_gen_err,enc_gen10_err,enc_gen30_err,fifo_out,fifo_valid,encod_rdy,decoder_rdy,prbs_valid_data,prbsgen_dec_rdy,enc_dec_rdy:std_logic := '0';
+signal encoder_led : std_logic := '0';
 begin
 
   basys3_viterbi_dec: entity work.basys3_viterbi_prbs_gen_det
@@ -55,7 +60,10 @@ begin
       clk            => clk,
       reset          => reset,
       gen_data       => gen_data,
-      gen_error      => gen_err,
+      prbs_gen_error => gen_err,
+      enc_gen_err    => enc_gen_err,
+      enc_gen10_err  => enc_gen10_err,
+      enc_gen30_err  => enc_gen30_err,
       bits_in        => bits,
       valid_data_in  => vit_valid_data,
       word_start_in  => word_start,
@@ -71,6 +79,7 @@ begin
       prbsgen_dec_ready => prbsgen_dec_rdy,
       enc_dec_ready     => enc_dec_rdy,       
        --------------------------------------------------
+      encoder_err        => encoder_led,
       digit          => digits,
       anode_en       => an_en,
       lock           => prbs_lock,
@@ -81,7 +90,25 @@ begin
     wait for 1 ns;
     clk <= not clk;    
 end process;
-
+process
+begin
+  enc_gen_err <= '1';
+  wait for 1000 us;
+  enc_gen_err <= '0';
+  wait for 10 ns;
+  
+  wait for 5 ns;
+  enc_gen10_err <= '1';
+  wait for 1000 us;
+  enc_gen10_err <= '0';
+  wait for 50 ns;
+  
+  wait for 10 ns;
+  enc_gen30_err <= '1';
+  wait for 1000 us;
+  enc_gen30_err <= '0';
+  wait for 70 ns; 
+end process;
 end Behavioral;
 
 
