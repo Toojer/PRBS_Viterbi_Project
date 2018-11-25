@@ -11,6 +11,7 @@ entity fdfwd_conv_enc_v2 is
     word_sz : integer := 32);                  -- generator polynomial size
   port (
     clk        : in std_logic;         -- clock signal
+    reset      : in std_logic;
     gen_poly1  : in  std_logic_vector(0 to m-1); -- generator polynomials for encoder
     gen_poly2  : in std_logic_vector(0 to m-1);
     bit_in     : in  std_logic;        -- input bit from PRBS Generator
@@ -22,11 +23,9 @@ end fdfwd_conv_enc_v2;
 ------------------------------------------------------------------------------------
 
 architecture Behavioral of fdfwd_conv_enc_v2 is
-  signal gen_data_r : std_logic := '0';  -- check to see if this is the start of a word
   signal bit_in_r : std_logic := '0'; --keeps track of previous bit so we don't miss first bit of prbs_gen
-  signal wrdstrt_count : integer := 0;
 begin
-  encode: process (clk) is
+  encode: process (clk,gen_poly1,gen_poly2) is
     variable mem_regs : std_logic_vector(0 to 31):= (others => '0');
     variable temp_val1, temp_val2 : std_logic_vector(0 to 31) := (others => '0');
     variable temp_bit1,temp_bit2 : std_logic := '0';
@@ -41,11 +40,8 @@ begin
       end if;
       --------------------------------------------
       bit_in_r <= bit_in;
-      gen_data_r <= gen_data;
       if gen_data = '1' then 
-      --if gen_data = '1' and wrdstrt_count > 1 then
         if (wrd_cnt < (word_sz-1)) then
-        --if (wrd_cnt < word_sz+(m-1)) then
           mem_regs  := bit_in_r & mem_regs(0 to 30); --shift right and put in input bit
           if wrd_cnt = 0 then
             data_out.word_start <= '1';
@@ -97,8 +93,13 @@ begin
      data_out.enc_bits(0)<=temp_bit1; 
      data_out.enc_bits(1)<=temp_bit2;
      --------------------------------------------------
+     if reset = '1' then
+       mem_regs := (others => '0');
+       wrd_cnt  := 0;
+       count    := 0;    
+       bit_in_r <= '0';   
+     end if;
     end if; --end if rising_edge(clk)
-    gen_data_r <= gen_data;
   end process encode;
  
 end Behavioral;

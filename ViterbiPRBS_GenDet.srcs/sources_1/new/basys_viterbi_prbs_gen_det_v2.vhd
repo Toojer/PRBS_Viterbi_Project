@@ -136,6 +136,7 @@ begin
       word_sz => word_size)
     port map (
       clk        => clk_6mhz, 
+      reset      => reset,
       gen_poly1  => gen_poly1,
       gen_poly2  => gen_poly2,
       bit_in     => prbs_fifo_bit,
@@ -171,6 +172,7 @@ begin
       wrd_sz => word_size)
     port map (
       clk         => clk_6mhz, 
+      reset       => reset,
       gen_poly1   => gen_poly1,
       gen_poly2   => gen_poly2,
       valid_data  => enc_fifo_val_data,

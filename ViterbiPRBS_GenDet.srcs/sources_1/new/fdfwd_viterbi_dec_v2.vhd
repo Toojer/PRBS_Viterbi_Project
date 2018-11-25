@@ -116,14 +116,15 @@ use work.convEncPackage.all;
 entity fdfwd_viterbi_dec_v2 is
     generic(m      : integer := 2;
             wrd_sz : integer := 32); --memory size and word size
-    Port ( clk : in std_logic;
-           gen_poly1: in std_logic_vector(0 to m-1);
-           gen_poly2: in std_logic_vector(0 to m-1); 
-           valid_data: in std_logic;
-           data_in   : in enc_info;
+    Port ( clk         : in std_logic;
+           reset       : in std_logic;
+           gen_poly1   : in std_logic_vector(0 to m-1);
+           gen_poly2   : in std_logic_vector(0 to m-1); 
+           valid_data  : in std_logic;
+           data_in     : in enc_info;
            ml_word_out : out std_logic_vector(0 to wrd_sz-1);
-           valid_word : out std_logic;
-           ready : out std_logic);
+           valid_word  : out std_logic;
+           ready       : out std_logic);
 end fdfwd_viterbi_dec_v2;
 
 architecture Behavioral of fdfwd_viterbi_dec_v2 is
@@ -132,9 +133,7 @@ architecture Behavioral of fdfwd_viterbi_dec_v2 is
   signal trellis : trellis_array := (0=>trellis_start,others => trellis_defaults);  -- these is the previous values of the trellis
   signal word_start_r : std_logic := '0';
   signal bits_in_r  : std_logic_vector(0 to 1) := "00";
-  signal valid_data_r: std_logic := '0';
   signal ready_r : std_logic := '0';
-  signal rdy_cnt : unsigned(1 downto 0) := "00";
   constant empty_ml_word : std_logic_vector(0 to wrd_sz-1) := (others => '1');
 begin
   decode: process (clk)
@@ -151,7 +150,6 @@ begin
       ready        <= '1'; --decoder is always ready for input, unless outputting decoded word handled at bottom.
       ready_r      <= '1';
       word_start_r <= data_in.word_start;
-      valid_data_r <= valid_data;
       -------  Loop on trellis array building the trellis  -------------
       if ((data_in.word_start = '1' and word_start_r = '0')) then --starting at state 0 of trellis
         decode_word := '1'; 
@@ -267,6 +265,13 @@ begin
           end if; --send signal so no more bits are input
         end if; --end decode_word = '1'          
       end if; --valid_data = 1
+      if reset = '1' then
+        trellis      <= (0=>trellis_start,others => trellis_defaults);  -- these is the previous values of the trellis
+        word_start_r <= '0';
+        bits_in_r    <= "00";
+        ready_r      <= '0';
+        temp_trellis := (others =>trellis_defaults);
+      end if;
     end if; -- end rising edge clock if statement
   end process decode;
       
