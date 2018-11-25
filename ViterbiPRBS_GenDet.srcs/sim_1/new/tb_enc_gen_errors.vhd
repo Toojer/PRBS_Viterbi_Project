@@ -25,6 +25,7 @@ signal gen_err, gen10_err, gen30_err: std_logic := '0';
 signal bits : unsigned(0 to 1) := "00";
 signal bits_output: std_logic_vector(0 to 1) := "00";
 signal clk,enc_led : std_logic := '0';
+signal word_strt1,wrd_strt_out1 :std_logic := '0';
 begin
 
 errrs: entity work.enc_gen_errors
@@ -33,8 +34,10 @@ errrs: entity work.enc_gen_errors
             gen_error => gen_err,
             gen_10err => gen10_err,
             gen_30err => gen30_err,
+            --word_start=> word_strt1,
             bits_in   => std_logic_vector(bits),
             bits_out  => bits_output,
+            --wrd_strt_out=> wrd_strt_out1,
             enc_err   => enc_led
           );
 process

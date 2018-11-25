@@ -3,21 +3,21 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 use IEEE.NUMERIC_STD.ALL;
 
-entity enc_gen_errors is
+entity enc_gen_err_v2 is
   port ( 
          clk       : in std_logic;
          gen_error : in std_logic;
          gen_10err : in std_logic;
          gen_30err : in std_logic;
          bits_in   : in std_logic_vector(0 to 1);
-        -- word_start: in std_logic;
+         word_start: in std_logic;
          bits_out  : out std_logic_vector(0 to 1);
-        -- wrd_strt_out: out std_logic;
+         wrd_strt_out: out std_logic;
          enc_err   : out std_logic
         );
-end enc_gen_errors;
+end enc_gen_err_v2;
 
-architecture Behavioral of enc_gen_errors is
+architecture Behavioral of enc_gen_err_v2 is
 
   signal gen_err_state,gen_err_r,gen_10err_r,gen_30err_r : std_logic := '0';  -- make sure only one instance of error is caught
   signal gen_err_temp,gen_10err_temp,gen_30err_temp : std_logic := '0';  -- output from debouncer
@@ -36,7 +36,7 @@ begin
       gen_err_r   <= gen_err_temp;
       gen_10err_r <= gen_10err_temp;
       gen_30err_r <= gen_30err_temp;
-     -- wrd_strt_out<= word_start;     
+      wrd_strt_out<= word_start;     
        
       case gen_err_state is
         

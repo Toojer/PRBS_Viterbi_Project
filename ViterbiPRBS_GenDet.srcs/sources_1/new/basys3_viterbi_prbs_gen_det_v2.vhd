@@ -55,7 +55,7 @@ begin
       clk            => clk,
       reset          => reset,
       gen_data       => gen_data,
-      gen_error      => gen_err,
+--      gen_error      => gen_err,
       bits_in        => bits,
       valid_data_in  => vit_valid_data,
       word_start_in  => word_start,

@@ -23,8 +23,9 @@ library unisim;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 use unisim.vcomponents.all;
+use work.convEncPackage.all;
 
-entity basys3_viterbi_prbs_gen_det is
+entity basys3_viterbi_prbs_gen_det_v2 is
   port (
     clk      : in  std_logic;                       -- input clock 100MHz
     reset    : in  std_logic;                       -- reset
@@ -41,25 +42,25 @@ entity basys3_viterbi_prbs_gen_det is
     valid_data_out: out std_logic;                  -- flag from viterbi enc data is valid
     bits_out  : out std_logic_vector(0 to 1);       -- bits out from viterbi encoder
     --------added to help with debugging ----
-    fifo_out    : out std_logic; 
-    fifo_valid  : out std_logic;
-    enc_rdy     : out std_logic;
-    dec_rdy     : out std_logic;
-    prbs_val_data: out std_logic;
-    prbsgen_dec_ready: out std_logic;
-    enc_dec_ready : out std_logic;
-    --clk_out       : out std_logic;
-    decoded_word0  : out std_logic;
-    decoded_word1  : out std_logic;
+--    fifo_out    : out std_logic; 
+--    fifo_valid  : out std_logic;
+--    enc_rdy     : out std_logic;
+--    dec_rdy     : out std_logic;
+--    prbs_val_data: out std_logic;
+--    prbsgen_dec_ready: out std_logic;
+--    enc_dec_ready : out std_logic;
+--    --clk_out       : out std_logic;
+--    decoded_word0  : out std_logic;
+--    decoded_word1  : out std_logic;
     --------------------------------------------------
     encoder_err  : out std_logic;
     digit    : out std_logic_vector(6 downto 0);    -- digit displayed on 7 segment display
     anode_en : out std_logic_vector(3 downto 0);   -- anode enabled for 7 segment display
     lock     : out std_logic;                       -- lock prbs
     sync     : out std_logic);                       -- sync
-end basys3_viterbi_prbs_gen_det;
+end basys3_viterbi_prbs_gen_det_v2;
 
-architecture Behavioral of basys3_viterbi_prbs_gen_det is
+architecture Behavioral of basys3_viterbi_prbs_gen_det_v2 is
   constant word_size : integer := 31;--13;   -- size of the word sent
   constant m : integer := 5; --2;            -- memory register size
   --signal taps_vector : std_logic_vector(0 to 15) := "0000000000101101";  -- 1 + x^11 + x^13 + x^14 + x^16
@@ -90,6 +91,7 @@ architecture Behavioral of basys3_viterbi_prbs_gen_det is
   --signal bits_out_r : std_logic_vector := "00";
   signal bits_out2  : std_logic_vector(0 to 1) := "00";
   signal word_start2: std_logic := '0';
+  signal enc_data_out,enc_data_fifo : enc_info := encInfo_defaults;
 begin
 
 
@@ -128,9 +130,9 @@ begin
      valid_data => prbs_fifo_val);
      
   prbs_fifo_full_n <= not prbs_fifo_full;
-  enc_gen_data     <= prbs_fifo_val and not(enc_data_fifo_full or enc_wrdstrt_fifo_full);
+  enc_gen_data     <= prbs_fifo_val and not(enc_data_fifo_full);
   
-  vit_encoder : entity work.fdfwd_conv_enc
+  vit_encoder : entity work.fdfwd_conv_enc_v2
     generic map (
       m => m,
       word_sz => word_size)
@@ -140,9 +142,8 @@ begin
       gen_poly2  => gen_poly2,
       bit_in     => prbs_fifo_bit,
       gen_data   => enc_gen_data,
-      bits_out   => bits_out1,  
-      valid_data => enc_valid_data,
-      word_start => word_start1, 
+      data_out   => enc_data_out,
+      valid_data => enc_valid_data, 
       ready      => encoder_rdy);
       
 --  enc_errrors: entity work.enc_gen_errors
@@ -157,30 +158,18 @@ begin
 --      --wrd_strt_out=>word_start2,
 --      enc_err   => encoder_err);
       
-  enc_fifo_data: entity work.fifo_nbit
-    generic map ( n=>2 )
+      
+  enc_fifo_data: entity work.convEnc_Fifo
     port map(
       clk        => clk_6mhz,
       valid_bit  => enc_valid_data,
-      word_in    => bits_out1,
+      data_in    => enc_data_out,
       data_req   => decoder_rdy,
       fifo_full  => enc_data_fifo_full,
-      bit_out    => enc_fifo_bits,
-      valid_data => enc_fifo_data_val);
+      data_out   => enc_data_fifo,
+      valid_data => enc_fifo_val_data);
       
-  enc_fifo_wordstart: entity work.fifo_1bit
-    port map(
-      clk        => clk_6mhz,
-      valid_bit  => enc_valid_data,
-      word_in    => word_start1,
-      data_req   => decoder_rdy,
-      fifo_full  => enc_wrdstrt_fifo_full,
-      bit_out    => enc_fifo_wrdsrt,
-      valid_data => enc_fifo_wrdsrt_val);
-      
-  --enc_fifo_val_data <= enc_fifo_data_val and enc_fifo_wrdsrt_val;
-      
-  vit_decoder : entity work.fdfwd_viterbi_dec
+  vit_decoder : entity work.fdfwd_viterbi_dec_v2
     generic map (
       m      => m,
       wrd_sz => word_size)
@@ -188,9 +177,8 @@ begin
       clk         => clk_6mhz, 
       gen_poly1   => gen_poly1,
       gen_poly2   => gen_poly2,
-      valid_data  => enc_fifo_data_val,--enc_fifo_val_data,
-      word_start  => enc_fifo_wrdsrt,
-      bits_in     => enc_fifo_bits,
+      valid_data  => enc_fifo_val_data,
+      data_in     => enc_data_fifo,
       ml_word_out => decoded_word,
       valid_word  => valid_word,
       ready       => decoder_rdy);
@@ -225,17 +213,17 @@ begin
     digit    => digit,
     anode_en => anode_en);
   
-  bits_out          <= enc_fifo_bits;
-  fifo_out          <= fifo_bit_out;
-  fifo_valid        <= fifo_val_data;
-  enc_rdy           <= encoder_rdy;
-  dec_rdy           <= decoder_rdy;
-  prbs_val_data     <= prbs_valid_data;
-  prbsgen_dec_ready <= prbsgen_dec_rdy;
-  enc_dec_ready     <= valid_word;
-  word_start_out    <= enc_fifo_wrdsrt;
-  valid_data_out    <= enc_fifo_val_data;
-  decoded_word0     <= decoded_word(7);
-  decoded_word1     <= decoded_word(8);
+--  bits_out          <= enc_fifo_bits;
+--  fifo_out          <= fifo_bit_out;
+--  fifo_valid        <= fifo_val_data;
+--  enc_rdy           <= encoder_rdy;
+--  dec_rdy           <= decoder_rdy;
+--  prbs_val_data     <= prbs_valid_data;
+--  prbsgen_dec_ready <= prbsgen_dec_rdy;
+--  enc_dec_ready     <= valid_word;
+--  word_start_out    <= enc_fifo_wrdsrt;
+--  valid_data_out    <= enc_fifo_val_data;
+--  decoded_word0     <= decoded_word(7);
+--  decoded_word1     <= decoded_word(8);
     
 end architecture Behavioral;

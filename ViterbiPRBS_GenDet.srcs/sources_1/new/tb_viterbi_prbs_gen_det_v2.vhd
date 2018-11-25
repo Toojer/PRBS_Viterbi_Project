@@ -3,13 +3,13 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
 
-entity tb_basys3_viterbi_prbs_gen_det is
+entity tb_basys3_viterbi_prbs_gen_det_v2 is
 --  Port ( );
-end tb_basys3_viterbi_prbs_gen_det;
+end tb_basys3_viterbi_prbs_gen_det_v2;
 
-architecture Behavioral of tb_basys3_viterbi_prbs_gen_det is
+architecture Behavioral of tb_basys3_viterbi_prbs_gen_det_v2 is
 
-component basys3_viterbi_prbs_gen_det is
+component basys3_viterbi_prbs_gen_det_v2 is
   port (
     clk      : in  std_logic;                       -- input clock 100MHz
     reset    : in  std_logic;                       -- reset
@@ -24,22 +24,12 @@ component basys3_viterbi_prbs_gen_det is
     word_start_out: out std_logic;                  -- strobe that new word started
     valid_data_out: out std_logic;                  -- flag from viterbi enc data is valid
     bits_out  : out std_logic_vector(0 to 1);       -- bits out from viterbi encoder
-    --------added Fifo_out clk_out to help with debugging ----
-    fifo_out    : out std_logic; 
-    fifo_valid  : out std_logic;
-    enc_rdy     : out std_logic;
-    dec_rdy     : out std_logic;
-    prbs_val_data: out std_logic;
-    prbsgen_dec_ready: out std_logic;
-    enc_dec_ready : out std_logic;
-    --clk_out   : out std_logic;                     
-    --------------------------------------------------
     enc_err    : out std_logic;
     digit    : out std_logic_vector(6 downto 0);    -- digit displayed on 7 segment display
     anode_en : out std_logic_vector(3 downto 0);   -- anode enabled for 7 segment display
     lock     : out std_logic;                       -- lock prbs
     sync     : out std_logic);                       -- sync
-end component basys3_viterbi_prbs_gen_det;
+end component basys3_viterbi_prbs_gen_det_v2;
 
 signal clk : std_logic := '0';
 signal reset : std_logic := '0';
@@ -55,7 +45,7 @@ signal enc_gen_err,enc_gen10_err,enc_gen30_err,fifo_out,fifo_valid,encod_rdy,dec
 signal encoder_led : std_logic := '0';
 begin
 
-  basys3_viterbi_dec: entity work.basys3_viterbi_prbs_gen_det
+  basys3_viterbi_dec: entity work.basys3_viterbi_prbs_gen_det_v2
     port map (
       clk            => clk,
       reset          => reset,
@@ -70,16 +60,7 @@ begin
       word_start_out => word_start,
       valid_data_out => vit_valid_data,
       bits_out       => bits,
-      --------added Fifo_out clk_out to help with debugging ----
-      fifo_out          => fifo_out,
-      fifo_valid        => fifo_valid,
-      enc_rdy           => encod_rdy,   
-      dec_rdy           => decoder_rdy,
-      prbs_val_data     => prbs_valid_data,
-      prbsgen_dec_ready => prbsgen_dec_rdy,
-      enc_dec_ready     => enc_dec_rdy,       
-       --------------------------------------------------
-      encoder_err        => encoder_led,
+      encoder_err    => encoder_led,
       digit          => digits,
       anode_en       => an_en,
       lock           => prbs_lock,
@@ -110,5 +91,3 @@ end process;
 --  wait for 70 ns; 
 --end process;
 end Behavioral;
-
-
