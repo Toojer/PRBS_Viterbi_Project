@@ -32,9 +32,8 @@ entity basys3_viterbi_prbs_gen_det_v2 is
     gen_data : in  std_logic;                       -- switched flipped to generate data
     prbs_gen_error : in std_logic;                  -- generate error for PRBS sequence
     enc_gen_err    : in std_logic;                  -- generate error on output of conv encoder
-    enc_gen10_err  : in std_logic;
-    enc_gen30_err  : in std_logic;
-    --enc_gen3_errors: in std_logic;
+    enc_gen10_err  : in std_logic;                  -- generate 3 errors
+    enc_gen30_err  : in std_logic;                  -- generate 5 error
     bits_in : in std_logic_vector(0 to 1);          -- input from viterbi encoder
     valid_data_in : in std_logic;                   -- To PRBS_det flag to start tracking data
     word_start_in : in std_logic;                   -- strobe that new word started
@@ -80,7 +79,6 @@ architecture Behavioral of basys3_viterbi_prbs_gen_det_v2 is
   signal enc_valid_data,word_start1 : std_logic :='0';
   signal word_start : std_logic := '0';
   signal clk_6mhz,clk_deb,clk_deb_r,clk1: std_logic := '0';
-  signal bits_out1: std_logic_vector(0 to 1):="00";
   signal clk_cnt :  unsigned(15 downto 0) := (others =>'0'); --clk debug count
   signal valid_word: std_logic := '0';
   signal prbs_bit_in ,prbs_fifo_bit,prbs_fifo_val,enc_fifo_data_val,enc_fifo_wrdsrt_val : std_logic:= '0'; --prbs output bit from fifo
@@ -89,7 +87,7 @@ architecture Behavioral of basys3_viterbi_prbs_gen_det_v2 is
   signal enc_gen_data : std_logic := '0';
   signal enc_gen_error_r:std_logic := '0';
   --signal bits_out_r : std_logic_vector := "00";
-  signal bits_out2  : std_logic_vector(0 to 1) := "00";
+  signal bits_out1,bits_out2  : enc_info := encInfo_defaults;
   signal word_start2: std_logic := '0';
   signal enc_data_out,enc_data_fifo : enc_info := encInfo_defaults;
 begin
@@ -146,24 +144,22 @@ begin
       valid_data => enc_valid_data, 
       ready      => encoder_rdy);
       
---  enc_errrors: entity work.enc_gen_errors
---    port map(
---      clk       => clk_6mhz,
---      gen_error => enc_gen_err,
---      gen_10err => enc_gen10_err,
---      gen_30err => enc_gen30_err,
---      bits_in   => bits_out1,
---      --word_start=> word_start1,
---      bits_out  => bits_out2,
---      --wrd_strt_out=>word_start2,
---      enc_err   => encoder_err);
+  enc_errrors: entity work.enc_gen_err_v2
+    port map(
+      clk       => clk_6mhz,
+      gen_error => enc_gen_err,
+      gen_10err => enc_gen10_err,
+      gen_30err => enc_gen30_err,
+      data_in   => enc_data_out,
+      data_out  => bits_out1,
+      enc_err   => encoder_err);
       
       
   enc_fifo_data: entity work.convEnc_Fifo
     port map(
       clk        => clk_6mhz,
       valid_bit  => enc_valid_data,
-      data_in    => enc_data_out,
+      data_in    => bits_out1,
       data_req   => decoder_rdy,
       fifo_full  => enc_data_fifo_full,
       data_out   => enc_data_fifo,

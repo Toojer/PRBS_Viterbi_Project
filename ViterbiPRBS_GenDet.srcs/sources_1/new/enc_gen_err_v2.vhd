@@ -1,7 +1,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-
 use IEEE.NUMERIC_STD.ALL;
+use work.convEncPackage.all;
 
 entity enc_gen_err_v2 is
   port ( 
@@ -9,10 +9,8 @@ entity enc_gen_err_v2 is
          gen_error : in std_logic;
          gen_10err : in std_logic;
          gen_30err : in std_logic;
-         bits_in   : in std_logic_vector(0 to 1);
-         word_start: in std_logic;
-         bits_out  : out std_logic_vector(0 to 1);
-         wrd_strt_out: out std_logic;
+         data_in   : in enc_info;
+         data_out  : out enc_info;
          enc_err   : out std_logic
         );
 end enc_gen_err_v2;
@@ -36,7 +34,7 @@ begin
       gen_err_r   <= gen_err_temp;
       gen_10err_r <= gen_10err_temp;
       gen_30err_r <= gen_30err_temp;
-      wrd_strt_out<= word_start;     
+      data_out.word_start <= data_in.word_start;     
        
       case gen_err_state is
         
@@ -61,7 +59,7 @@ begin
            gen_err_state <= '1';
          end if;
          
-         bits_out <= bits_in;
+         data_out.enc_bits <= data_in.enc_bits;
          
        when '1' =>
          
@@ -69,11 +67,10 @@ begin
            enc_err   <= '1';
            enc_led   <= X"FFFF";
            err_count <= err_count + 1;
-           bits_out(0)  <= not bits_in(0);
-           bits_out(1)  <= bits_in(1);
+           data_out.enc_bits(0)  <= not data_in.enc_bits(0);
+           data_out.enc_bits(1)  <= data_in.enc_bits(1);
          else
-           --enc_err  <= '0';
-           bits_out <= bits_in;
+           data_out.enc_bits <= data_in.enc_bits;
            gen_err_state <= '0';
            err_count <= 0;
          end if;
@@ -82,7 +79,7 @@ begin
            enc_err    <= '0';
            err_count  <= 0;
            gen_err_state <= '0';
-           bits_out <= bits_in;
+           data_out.enc_bits <= data_in.enc_bits;
      end case; 
     end if;
   end process;
