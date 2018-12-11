@@ -52,9 +52,6 @@ package body trellis_package is
     return integer is
     variable temp_vector : std_logic_vector(m-2 downto 0);
   begin
-    --for i in vector_in'range loop
-    --  temp_vector(i) := vector_in(i);
-    --end loop;
     temp_vector := vector_in(m-2 downto 0);
     return to_integer(unsigned(temp_vector));
   end;
@@ -114,33 +111,29 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 use work.trellis_package.all;
+use work.convEncPackage.all;
 
-entity fdfwd_viterbi_dec is
+entity fdfwd_viterbi_dec_v2 is
     generic(m      : integer := 2;
             wrd_sz : integer := 32); --memory size and word size
-    Port ( clk : in std_logic;
-           gen_poly1: in std_logic_vector(0 to m-1);
-           gen_poly2: in std_logic_vector(0 to m-1); 
-           valid_data: in std_logic;
-           word_start : in std_logic;
-           bits_in : in std_logic_vector(0 to 1);
+    Port ( clk         : in std_logic;
+           reset       : in std_logic;
+           gen_poly1   : in std_logic_vector(0 to m-1);
+           gen_poly2   : in std_logic_vector(0 to m-1); 
+           valid_data  : in std_logic;
+           data_in     : in enc_info;
            ml_word_out : out std_logic_vector(0 to wrd_sz-1);
-           valid_word : out std_logic;
-           ready : out std_logic);
-end fdfwd_viterbi_dec;
+           valid_word  : out std_logic;
+           ready       : out std_logic);
+end fdfwd_viterbi_dec_v2;
 
---package tr_pack is new work.trellis_package generic map (m=>m,wrd_sz=>wrd_sz);
-
-architecture Behavioral of fdfwd_viterbi_dec is
+architecture Behavioral of fdfwd_viterbi_dec_v2 is
 --This trellis architecture uses the index inside the trellis diagram to indicate what the state of the memory registers
 --are.  I attempted to make the package generic, but have not found a way to make it work as a generic package
   signal trellis : trellis_array := (0=>trellis_start,others => trellis_defaults);  -- these is the previous values of the trellis
   signal word_start_r : std_logic := '0';
   signal bits_in_r  : std_logic_vector(0 to 1) := "00";
-  signal valid_data_r: std_logic := '0';
-  --signal temp_ml_word : std_logic_vector(0 to wrd_sz-1) := (others => '0');
   signal ready_r : std_logic := '0';
-  signal rdy_cnt : unsigned(1 downto 0) := "00";
   constant empty_ml_word : std_logic_vector(0 to wrd_sz-1) := (others => '1');
 begin
   decode: process (clk)
@@ -156,18 +149,17 @@ begin
     if (rising_edge(clk)) then  -- rising clock edge and valid data
       ready        <= '1'; --decoder is always ready for input, unless outputting decoded word handled at bottom.
       ready_r      <= '1';
-      word_start_r <= word_start;
-      valid_data_r <= valid_data;
+      word_start_r <= data_in.word_start;
       -------  Loop on trellis array building the trellis  -------------
-      if ((word_start = '1')) then --starting at state 0 of trellis
+      if ((data_in.word_start = '1' and word_start_r = '0')) then --starting at state 0 of trellis
         decode_word := '1'; 
         ml_word_out <= (others => '1');
         temp_ml_word:= (others => '1');
         valid_word <= '0';
       end if;
-      --ready <= '1';
+      
       if valid_data = '1' then
-        bits_in_r <= bits_in;
+        bits_in_r <= data_in.enc_bits;
         if decode_word = '1' then
           tr_loop:for i in trellis'range loop
             if trellis(i).valid_data = '1' then 
@@ -260,22 +252,15 @@ begin
             ready <= '0';
            -- ready_r <= '0'; 
           end if; --send signal so no more bits are input
-        end if; --end decode_word = '1'
---        if temp_ml_word /= empty_ml_word and cnt <= 1 then --and ready_r = '1' then
---          ready <= '0';
---          cnt <= cnt +1;
---        else 
---          ready <= '1';
---          cnt <= "00";
---        end if;          
+        end if; --end decode_word = '1'          
       end if; --valid_data = 1
---      if ready_r = '0' and rdy_cnt < 2 then
---        ready <= '0';
---        rdy_cnt <= rdy_cnt +1;
---      elsif ready_r='1' and t < ((wrd_sz-1)+(m-1)) then 
---        ready_r <= '1';
---        rdy_cnt <= "00";
---      end if;
+      if reset = '1' then
+        trellis      <= (0=>trellis_start,others => trellis_defaults);  -- these is the previous values of the trellis
+        word_start_r <= '0';
+        bits_in_r    <= "00";
+        ready_r      <= '0';
+        temp_trellis := (others =>trellis_defaults);
+      end if;
     end if; -- end rising edge clock if statement
   end process decode;
       

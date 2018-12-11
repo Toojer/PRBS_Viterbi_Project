@@ -15,41 +15,57 @@ entity fifo_nbit is
 end fifo_nbit;
 
 architecture Behavioral of fifo_nbit is
-    signal valid_bit_r : std_logic := '0';
-    
+    signal valid_bit_r,bit_out_r,data_req_r : std_logic := '0';
+    signal fifo_rdy    : std_logic := '0';
+    constant fifo_sz : integer := 127;
 begin
 
   process(clk)
     
-    constant empty_buf : std_logic_vector(0 to 30) := (others => '1');  -- empty buffer constant
-    variable fifo_buf  : std_logic_vector(0 to 31) := (others => '1');  -- fifo buffer.
+    constant empty_buf : std_logic_vector(0 to fifo_sz) := (others => '1');  -- empty buffer constant
+    variable fifo_buf  : std_logic_vector(0 to fifo_sz) := (others => '1');  -- fifo buffer.
     variable indx      : integer := 0;
   begin
     if rising_edge(clk) then
       valid_data <= '0';
       fifo_full <= '0';
-      if (valid_bit ='1' and indx<32) then --if there is a decoded word input
+      if (valid_bit ='1' and indx <= fifo_sz) then --if there is a decoded word input
         fifo_buf(indx to (indx+(n-1))) := word_in;
         indx := indx + n;
       end if; -- end if valid_word
       
-      if (data_req = '1') then
+      if indx > 64 then
+        fifo_rdy <= '1';
+      end if;
+      --if (data_req = '1' and fifo_rdy = '1') then
+      if (data_req = '1' and data_req_r = '1' and fifo_rdy = '1') then
        if indx > 0 then
          valid_data <= '1';
          bit_out <= fifo_buf(0 to n-1);
-         fifo_buf(0 to fifo_buf'right-n) := fifo_buf(n to 31); --shift and fill with ones 
+         fifo_buf(0 to fifo_buf'right-n) := fifo_buf(n to fifo_sz); --shift and fill with ones 
          indx := indx - n;
          if indx < 0 then 
-           indx := 0; 
+           indx := 0;
+           fifo_rdy<='0'; 
          end if;
+       ----------------------------------------------------------------
+       elsif data_req = '1' and data_req_r = '0' and fifo_rdy = '1' then
+         valid_data <= '1';
+         bit_out <= fifo_buf(0 to n-1); 
+       ------------------------------------------------------------------
        else
          valid_data <= '0';
+         -----------------------------
+         bit_out <= fifo_buf(0 to n-1);
+         -------------------------------
        end if;
        
       end if;
-      if (indx+n > fifo_buf'length) then
+      if (indx+n > fifo_sz) then
         fifo_full <= '1';
       end if;
+      data_req_r <= data_req;
+      --bit_out_r  <= bit_out;
       --valid_bit_r <= valid_bit; --make sure to only store the word once.
     end if; -- end rising_edge if
   end process;

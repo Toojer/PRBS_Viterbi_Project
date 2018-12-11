@@ -27,7 +27,7 @@ end tb_fdfwd_viterbi_dec;
        clk     : in std_logic;                     
        reset   : in std_logic;              -- resets
        gen_data: in std_logic;              --tells PRBS to start generating
-       enc_gen_data: in std_logic;  ----******added in after the fact******
+     --  enc_gen_data: in std_logic;  ----******added in after the fact******
        gen_err : in std_logic;              -- high signal will generate 1 error
        taps    : in std_logic_vector(0 to n);  -- taps vector
        data_valid_out : out std_logic;        -- used as flag to signal valid data generating
@@ -79,12 +79,12 @@ end tb_fdfwd_viterbi_dec;
       ready       : out  std_logic);  -- strobe to signal word decoded,  ready for input.
   end component fdfwd_viterbi_dec;
   constant word_size : integer := 31;--13;   -- size of the word sent
-  constant m : integer := 2;            -- memory register size
+  constant m : integer := 5;            -- memory register size
   --constant prbs_word : std_logic_vector(0 to 31) :="10011110111001111011101110011100"; --u = 110101101010110
   --"10111001011110110010011100";  -- prbs word for u=101110100110 
   signal clk : std_logic := '0';
-  signal gen_poly1 : std_logic_vector(0 to m-1):="11" ;--3 
-  signal gen_poly2 : std_logic_vector(0 to m-1):="01" ;--1
+  signal gen_poly1 : std_logic_vector(0 to m-1):="11111";--"11" ;--3 
+  signal gen_poly2 : std_logic_vector(0 to m-1):="10001";--"01" ;--1
   signal bit_in : std_logic := '1';     -- bit input to encoder
   signal decoder_rdy : std_logic := '0';  -- generate data strobe
   signal encoded_bits : std_logic_vector(0 to 1) := "10";  -- encoded bits into decoder
@@ -124,7 +124,7 @@ begin
         clk            => clk,
         reset          => reset,
         gen_data       => enc_dec_rdy,
-        enc_gen_data   => prbsgen_dec_rdy1,
+--        enc_gen_data   => prbsgen_dec_rdy1,
         gen_err        => generate_err,
         taps           => prbs_taps,
         data_valid_out => prbs_valid_data,

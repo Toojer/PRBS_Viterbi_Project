@@ -3,12 +3,12 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 use work.convEncPackage.all;
 
-entity tb_enc_gen_errors is
+entity tb_enc_gen_err_v2 is
 --  Port ( );
-end tb_enc_gen_errors;
+end tb_enc_gen_err_v2;
 
 
-architecture Behavioral of tb_enc_gen_errors is
+architecture Behavioral of tb_enc_gen_err_v2 is
 
 component enc_gen_errors is
     port (
@@ -24,10 +24,10 @@ component enc_gen_errors is
 end component;
 
 signal gen_err, gen10_err, gen30_err: std_logic := '0';
-signal bits : unsigned(0 to 1) := "00";
-signal bits_output: std_logic_vector(0 to 1) := "00";
+--signal bits : unsigned(0 to 1) := "00";
+--signal bits_output: std_logic_vector(0 to 1) := "00";
 signal clk,enc_led : std_logic := '0';
-signal word_strt1,wrd_strt_out1 :std_logic := '0';
+--signal word_strt1,wrd_strt_out1 :std_logic := '0';
 constant encInfo_defaults : enc_info :=( enc_bits   => "11",
                                              word_start => '0');
 signal enc_bits,bits_out : enc_info := encInfo_defaults;
@@ -52,28 +52,28 @@ begin
 end process;
 
 
-process
-begin
-  wait for 10 ns;
-  bits <= bits + 1;
-end process;
+--process
+--begin
+--  wait for 10 ns;
+--  --bits <= bits + 1;
+--end process;
 
 process
 begin
   gen_err <= '1';
-  wait for 10 ms;
+  wait for 10 ns;
   gen_err <= '0';
   wait for 20 ns;
   
   wait for 50 ns;
   gen10_err <= '1';
-  wait for 10 ms;
+  wait for 10 ns;
   gen10_err <= '0';
   wait for 50 ns;
   
   wait for 10 ns;
   gen30_err <= '1';
-  wait for 10 ms;
+  wait for 10 ns;
   gen30_err <= '0';
   wait for 70 ns; 
 end process;

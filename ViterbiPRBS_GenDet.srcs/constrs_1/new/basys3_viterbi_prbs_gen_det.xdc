@@ -114,15 +114,17 @@ set_property PACKAGE_PIN W4 [get_ports {anode_en[3]}]
 set_property PACKAGE_PIN U18 [get_ports reset]						
 	set_property IOSTANDARD LVCMOS33 [get_ports reset]
 #BtnU
-set_property PACKAGE_PIN T18 [get_ports gen_error]						
-	set_property IOSTANDARD LVCMOS33 [get_ports gen_error]
+set_property PACKAGE_PIN T18 [get_ports prbs_gen_error]						
+	set_property IOSTANDARD LVCMOS33 [get_ports prbs_gen_error]
 #BtnL
-#set_property PACKAGE_PIN W19 [get_ports clk_btn]						
-	#set_property IOSTANDARD LVCMOS33 [get_ports clk_btn]
-#set_property PACKAGE_PIN T17 [get_ports btnR]						
-	#set_property IOSTANDARD LVCMOS33 [get_ports btnR]
-#set_property PACKAGE_PIN U17 [get_ports btnD]						
-	#set_property IOSTANDARD LVCMOS33 [get_ports btnD]
+set_property PACKAGE_PIN W19 [get_ports enc_gen_err]                        
+    set_property IOSTANDARD LVCMOS33 [get_ports enc_gen_err]
+#BtnR
+set_property PACKAGE_PIN T17 [get_ports enc_gen10_err]                        
+    set_property IOSTANDARD LVCMOS33 [get_ports enc_gen10_err]
+#BtnD
+set_property PACKAGE_PIN U17 [get_ports enc_gen30_err]                        
+    set_property IOSTANDARD LVCMOS33 [get_ports enc_gen30_err]
  
 
 
